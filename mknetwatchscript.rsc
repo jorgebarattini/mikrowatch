@@ -34,9 +34,11 @@
   #Number of pings to run each pass (two packets per ping)
   :local monpingcount 5;
   #Max latency accepted (in miliseconds)
-  :local monpinglatency "500ms";
+  :local monpinglatency 500;
   #Number of passes to delare link up/down
   :local monpasses 2;
+  #Max packet loss accepted (percentage)
+  :local monpl 50;
   #Array of monitored IPs
   #:local monips {8.8.8.8;8.8.4.4};
   :local monips {8.8.8.8};
@@ -73,6 +75,10 @@
 
   #Loop monitored IPs with flood-ping
   :foreach arrip in=$monips do={
+    #Reset ping counters
+    :set avgrttT value=0;
+    :set sendT value=0;
+    :set recvT value=0;
     :for flooding from=1 to=$monpingcount step=1 do={
       while ($floodpinguse = true) do={
         if ($endebug = true) do={
@@ -82,7 +88,7 @@
       }
       :set floodpinguse true;
       {
-        /tool flood-ping count=2 timeout=$monpinglatency size=500 address=$arrip do={
+        /tool flood-ping count=2 timeout=($monpinglatency."ms") size=500 address=$arrip do={
           :if ($sent = 2) do={
             :set avgrttT ($"avg-rtt" + $avgrttT);
             :set sendT ($"sent" + $sendT);
@@ -94,12 +100,9 @@
       }
     }
     if ($endebug = true) do={ :log warning ("Monitor: ".$arrip." Avg. latency: ".[:tostr ($avgrttT / $monpingcount )]." ms PktSent: ".$sendT." PktRcvd: ".$recvT." PL: ".[:tostr (100-(($recvT*100)/($sendT)))]."%" ) };
-    #Reset ping counters
-    :set avgrttT value=0;
-    :set sendT value=0;
-    :set recvT value=0;
+    if ($endebug = true) do={ :log warning ("Check PL: ".[:tostr (100-(($recvT*100)/($sendT)))]." > ".$monpl." OR Check Latency: ".[($avgrttT / $monpingcount )]."ms > ".$monpinglatency."ms") };
     #Check PL and Latency
-    if (((100-(($recvT*100)/($sendT))) > $monpl) or (($avgrttT / $monpingcount ) > $monpinglatency) do={
+    if (((100-(($recvT*100)/($sendT))) > $monpl) or (($avgrttT / $monpingcount ) > $monpinglatency)) do={
       #Link failed
       :set monstat down;
       #Initialize comment if not created
