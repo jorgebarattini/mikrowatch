@@ -25,9 +25,9 @@
   ##########MODIFY FOR EACH CLIENT##########
   #Administrative parameters
   #Client name
-  :local admadmnamecli "MYHAPPYCLIENT";
+  :local admnamecli "MYHAPPYCLIENT";
   #Name of interface
-  :local admadmnamewan "WAN1";
+  :local admnamewan "WAN1";
   #Name of ISP
   :local admnameprov "MYISP";
   #Monitoring parameters
@@ -107,6 +107,8 @@
       :set monstat down;
       #Initialize comment if not created
       if ([:pick [/ip route get [find comment~"$mongateway"] comment] ([:len [/ip route get [find comment~"$mongateway"] comment]]-1)] != "_") do={/ip route set [find comment~"$mongateway"] comment=($mongateway."-".$monstat.$montime."_")};
+      #Log the problem
+      :log warning ("Problem on $admnameprov monitoring ".$arrip.", either current PL=".[:tostr (100-(($recvT*100)/($sendT)))]."% is > than threshold=".$monpl."% OR Latency=".[($avgrttT / $monpingcount )]."ms is > than threshold=".$monpinglatency."ms");
       #Check if stat changed
       if ( [/ip route get [find comment~"$mongateway"] comment]~"-up" ) do={
         #Status changed
