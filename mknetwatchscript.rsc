@@ -26,10 +26,8 @@
   #Administrative parameters
   #Client name
   :local admnamecli "MYHAPPYCLIENT";
-  #Name of interface
-  :local admnamewan "WAN1";
-  #Name of ISP
-  :local admnameprov "MYISP";
+  #Name of ISP {{ISP1NAME;ISP1GATEWAY|INTERFACE};{ISP2NAME;ISP2GATEWAY|INTERFACE}}
+  :local providers {{MYISP1;192.0.2.1};{MYISP2;pppoe-out1}};
   #Monitoring parameters
   #Number of pings to run each pass (two packets per ping)
   :local monpingcount 5;
@@ -43,10 +41,10 @@
   #:local monips {8.8.8.8;8.8.4.4};
   :local monips {8.8.8.8};
   #IP of PBX server to reset conections
-  :local monpbxip "192.168.1.114";
+  #:local monpbxip "192.168.1.114";
   #Configured comment on monitored Gateway (this
   #must be already set for script to work)
-  :local mongateway "DG_WAN1-MYISP";
+  #:local mongateway "DG_WAN1-MYISP";
   #Notification parameters
   #Notify to email
   :local emaildst "my.email.address@gmail.com";
@@ -70,8 +68,26 @@
   #Date and time
   :local date [/system clock get date];
   :local time [/system clock get time];
-
+  #Script setup flag
+  :global issetup;
+  
   ################SCRIPT STARTS####################
+  
+  #Setup script
+  if ($issetup = false) do={
+    #Check every povider
+    :foreach arrisp in=$providers do={
+      #Check if there is a default gateway
+      if ( [:len ([/ip route find (dst-address=0.0.0.0/0 gateway="$arrisp->1")])] > 0 ) do={
+        
+      } else={ 
+        
+      }
+  
+  #Write script to check if gateway is set on each ISP 
+  #Do something with the mongateway variable, maybe use ISPXNAME on array
+  #Add mangle to mark ISPXNAME_in ISPXNAME_out
+  }
 
   #Loop monitored IPs with flood-ping
   :foreach arrip in=$monips do={
@@ -135,8 +151,9 @@
             #Threshold reached, disable NATs for this provider
             /ip firewall nat disable [find comment="NAT_VoIP_$admnameprov"];
             #Threshold reached, kill all connections related to PBX for this provider
-            /ip firewall connection remove [find src-address~"$monpbxip"];
-            /ip firewall connection remove [find reply-src-address~"$monpbxip"];
+            #Reset connection by mark
+            #/ip firewall connection remove [find src-address~"$monpbxip"];
+            #/ip firewall connection remove [find reply-src-address~"$monpbxip"];
             #Threshold reached, Send email
             /tool e-mail send to="$emaildst" subject="$admnamecli - $admnamewan_$admnameprov - $monstat" body="Client: $admnamecli \n\n Date: $date, $time \n\n The $admnamewan Link $admnameprov at device $namedev is $monstat";
             #Threshold reached, log warning
@@ -179,8 +196,9 @@
             #Threshold reached, enable NATs for this provider
             /ip firewall nat enable [find comment="NAT_VoIP_$admnameprov"];
             #Threshold reached, kill all connections related to PBX for this provider
-            /ip firewall connection remove [find src-address~"$monpbxip"];
-            /ip firewall connection remove [find reply-src-address~"$monpbxip"];
+            #Reset connection by mark
+            #/ip firewall connection remove [find src-address~"$monpbxip"];
+            #/ip firewall connection remove [find reply-src-address~"$monpbxip"];
             #Threshold reached, Send email
             /tool e-mail send to="$emaildst" subject="$admnamecli - $admnamewan_$admnameprov - $monstat" body="Client: $admnamecli \n\n Date: $date, $time \n\n The $admnamewan Link $admnameprov at device $namedev is $monstat";
             #Threshold reached, log warning
